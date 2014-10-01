@@ -6,10 +6,8 @@ import (
 )
 
 func main() {
-	messages := make(chan []byte, 512)
-
 	// create a new publisher and attach it to this channel
-	publisher := broadcast.New((<-chan []byte)(messages))
+	publisher := broadcast.New()
 	publisher.Start() // VERY IMPORTANT - you must start the publisher
 	defer publisher.Close()
 
@@ -22,7 +20,7 @@ func main() {
 	close(response)
 
 	// send a message to the publisher
-	messages <- []byte("hello world")
+	publisher.WriteString("hello world")
 	received := <-subscription.Receive
 
 	// should print out hello world

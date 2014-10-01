@@ -30,6 +30,12 @@ type Publisher interface {
 
 	// close the publisher.  this will close all the underlying channels
 	Close()
+
+	// broadcast data through this publisher
+	Write([]byte) (int, error)
+
+	// convenience methods around #Write
+	WriteString(string) (int, error)
 }
 
 type Subscription struct {
@@ -41,10 +47,10 @@ type subscriber struct {
 	Send chan []byte
 }
 
-func New(messages <-chan []byte) Publisher {
+func New() Publisher {
 	return &publisher{
 		subscribers: make(map[Key]*subscriber),
-		messages:    messages,
+		messages:    make(chan []byte, 4096),
 		subscribe:   make(chan chan *Subscription, 32),
 		unsubscribe: make(chan Key, 32),
 		done:        make(chan interface{}),
@@ -54,7 +60,7 @@ func New(messages <-chan []byte) Publisher {
 
 type publisher struct {
 	subscribers map[Key]*subscriber
-	messages    <-chan []byte
+	messages    chan []byte
 	subscribe   chan chan *Subscription
 	unsubscribe chan Key
 	done        chan interface{}
@@ -110,6 +116,8 @@ func (p *publisher) agent() {
 				close(subscriber.Send)
 			}
 
+			close(p.messages)
+
 			// drain any subscription requests so they won't wait for us
 			for {
 				select {
@@ -154,4 +162,19 @@ func (p *publisher) Close() {
 		p.done <- true
 		p.wg.Wait()
 	}
+}
+
+func (p *publisher) Write(data []byte) (int, error) {
+	if data == nil {
+		return 0, errors.New("illegal attempt to write nil to the Publisher")
+	} else if p.state == running {
+		p.messages <- data
+		return len(data), nil
+	} else {
+		return 0, errors.New("unable to write to a publisher that is not running.  perhaps you didn't call #Start?")
+	}
+}
+
+func (p *publisher) WriteString(content string) (int, error) {
+	return p.Write([]byte(content))
 }
