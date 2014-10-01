@@ -92,7 +92,7 @@ func (p *publisher) agent() {
 
 		case message, open := <-p.messages:
 			if message == nil && !open {
-				return
+				continue
 			}
 			for key, subscriber := range p.subscribers {
 				select {

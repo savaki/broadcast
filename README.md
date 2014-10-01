@@ -1,6 +1,8 @@
 broadcast
 =========
 
+[![GoDoc](https://godoc.org/github.com/savaki/broadcast?status.svg)](https://godoc.org/github.com/savaki/broadcast)
+
 golang library to handling pub/sub to []byte streams
 
 ## Example
