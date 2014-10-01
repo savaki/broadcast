@@ -7,12 +7,12 @@ import (
 	"sync/atomic"
 )
 
-type State uint64
+type state uint64
 
 const (
-	Initialized State = iota
-	Running
-	Closed
+	initialized state = iota
+	running
+	closed
 )
 
 type Key string
@@ -59,7 +59,7 @@ type publisher struct {
 	unsubscribe chan Key
 	done        chan interface{}
 	wg          *sync.WaitGroup
-	state       State
+	state       state
 }
 
 func newKey() Key {
@@ -123,12 +123,12 @@ func (p *publisher) agent() {
 	}
 }
 
-func (p *publisher) transitionState(from, to State) bool {
+func (p *publisher) transitionState(from, to state) bool {
 	return atomic.CompareAndSwapUint64((*uint64)(&p.state), uint64(from), uint64(to))
 }
 
 func (p *publisher) Start() error {
-	if ok := p.transitionState(Initialized, Running); !ok {
+	if ok := p.transitionState(initialized, running); !ok {
 		return errors.New("Publisher was already started")
 	}
 
@@ -137,20 +137,20 @@ func (p *publisher) Start() error {
 }
 
 func (p *publisher) Subscribe(response chan *Subscription) {
-	if p.state == Running {
+	if p.state == running {
 		p.subscribe <- response
 	}
 }
 
 func (p *publisher) Unsubscribe(key Key) {
-	if p.state == Running {
+	if p.state == running {
 		p.unsubscribe <- key
 	}
 }
 
 func (p *publisher) Close() {
 	// indicate this publisher is closed
-	if ok := p.transitionState(Running, Closed); ok {
+	if ok := p.transitionState(running, closed); ok {
 		p.done <- true
 		p.wg.Wait()
 	}
