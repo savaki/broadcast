@@ -1,7 +1,7 @@
 broadcast
 =========
 
-[![GoDoc](https://godoc.org/github.com/savaki/broadcast?status.svg)](https://godoc.org/github.com/savaki/broadcast)
+[![GoDoc](https://godoc.org/github.com/savaki/broadcast?status.svg)](https://godoc.org/github.com/savaki/broadcast) [![Build Status](https://snap-ci.com/savaki/broadcast/branch/master/build_image)](https://snap-ci.com/savaki/broadcast/branch/master)
 
 golang library to handling pub/sub to []byte streams
 
