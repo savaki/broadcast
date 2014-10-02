@@ -109,13 +109,14 @@ func TestMultiplePublishers(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		Convey("When I have publisher2 subscribe to publisher1", func() {
-			publisher1.SubscribeWriter(publisher2)
-			publisher2.SubscribeWriter(buffer)
+			go publisher1.SubscribeWriter(publisher2)
+			go publisher2.SubscribeWriter(buffer)
 
 			Convey("Then I expect data to be pushed to the downstream publisher", func() {
+				time.Sleep(10 * time.Millisecond) // just enough time to swap go-routines
 				publisher1.WriteString(message)
 
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond) // just enough time to swap go-routines
 				So(buffer.String(), ShouldEqual, message)
 			})
 		})

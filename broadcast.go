@@ -24,9 +24,9 @@ type Publisher interface {
 
 	// create a new subscription; once a subscription is created, the information will be passed back on the provided
 	// channel
-	Subscribe(chan *Subscription)
+	Subscribe(chan *Subscription) error
 
-	// have messages automatically published to the specified writer
+	// have messages automatically published to the specified writer.  this is a BLOCKING call
 	SubscribeWriter(io.Writer)
 
 	// unsubscribe the specified key from the Publisher; if this key doesn't exist, nothing will happen
@@ -148,30 +148,30 @@ func (p *publisher) Start() error {
 	return nil
 }
 
-func (p *publisher) Subscribe(response chan *Subscription) {
-	if p.state == running {
-		p.subscribe <- response
+func (p *publisher) Subscribe(response chan *Subscription) error {
+	if p.state != running {
+		return errors.New("unable to subscribe.  is this publisher started?")
 	}
+
+	p.subscribe <- response
+	return nil
 }
 
+// have messages automatically published to the specified writer.  this is a BLOCKING call
 func (p *publisher) SubscribeWriter(target io.Writer) {
-	response := make(chan *Subscription, 1)
-	defer close(response)
-
+	response := make(chan *Subscription)
 	p.Subscribe(response)
 	subscription := <-response
+	defer close(response)
+	defer p.Unsubscribe(subscription.Key)
 
-	go func() {
-		defer p.Unsubscribe(subscription.Key)
-
-		t := target
-		for data := range subscription.Receive {
-			_, err := t.Write(data)
-			if err != nil {
-				return
-			}
+	t := target
+	for data := range subscription.Receive {
+		_, err := t.Write(data)
+		if err != nil {
+			return
 		}
-	}()
+	}
 }
 
 func (p *publisher) Unsubscribe(key Key) {
