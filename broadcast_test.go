@@ -1,6 +1,7 @@
 package broadcast_test
 
 import (
+	"bytes"
 	"github.com/savaki/broadcast"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
@@ -85,5 +86,38 @@ func TestCompiles(t *testing.T) {
 		So(err, ShouldNotBeNil)
 
 		publisher.Close()
+	})
+}
+
+func TestMultiplePublishers(t *testing.T) {
+	message := "hello world"
+
+	var publisher1 broadcast.Publisher
+	var publisher2 broadcast.Publisher
+	var err error
+	var buffer *bytes.Buffer
+
+	Convey("Given two publishers", t, func() {
+		buffer = &bytes.Buffer{}
+
+		publisher1 = broadcast.New()
+		err = publisher1.Start()
+		So(err, ShouldBeNil)
+
+		publisher2 = broadcast.New()
+		err = publisher2.Start()
+		So(err, ShouldBeNil)
+
+		Convey("When I have publisher2 subscribe to publisher1", func() {
+			publisher1.SubscribeWriter(publisher2)
+			publisher2.SubscribeWriter(buffer)
+
+			Convey("Then I expect data to be pushed to the downstream publisher", func() {
+				publisher1.WriteString(message)
+
+				time.Sleep(50 * time.Millisecond)
+				So(buffer.String(), ShouldEqual, message)
+			})
+		})
 	})
 }

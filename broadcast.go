@@ -3,6 +3,7 @@ package broadcast
 import (
 	"code.google.com/p/go-uuid/uuid"
 	"errors"
+	"io"
 	"sync"
 	"sync/atomic"
 )
@@ -24,6 +25,9 @@ type Publisher interface {
 	// create a new subscription; once a subscription is created, the information will be passed back on the provided
 	// channel
 	Subscribe(chan *Subscription)
+
+	// have messages automatically published to the specified writer
+	SubscribeWriter(io.Writer)
 
 	// unsubscribe the specified key from the Publisher; if this key doesn't exist, nothing will happen
 	Unsubscribe(Key)
@@ -148,6 +152,26 @@ func (p *publisher) Subscribe(response chan *Subscription) {
 	if p.state == running {
 		p.subscribe <- response
 	}
+}
+
+func (p *publisher) SubscribeWriter(target io.Writer) {
+	response := make(chan *Subscription, 1)
+	defer close(response)
+
+	p.Subscribe(response)
+	subscription := <-response
+
+	go func() {
+		defer p.Unsubscribe(subscription.Key)
+
+		t := target
+		for data := range subscription.Receive {
+			_, err := t.Write(data)
+			if err != nil {
+				return
+			}
+		}
+	}()
 }
 
 func (p *publisher) Unsubscribe(key Key) {
